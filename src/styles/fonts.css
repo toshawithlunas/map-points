@@ -1,0 +1,36 @@
+@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap");
+
+/*
+ * The Figma export encodes the weight inside the font-family NAME
+ * (e.g. `font-['General_Sans:Semibold']`) and never sets `font-weight`.
+ * Those names don't match the `General Sans` family Fontshare registers,
+ * so every text element was silently falling back to the system sans-serif
+ * at weight 400 — Semibold/Medium/Regular all looked identical.
+ *
+ * Alias each style-named family to the matching General Sans weight so the
+ * weight hierarchy renders correctly. Family names match case-insensitively,
+ * which also covers the export's `General sans` (lowercase) variants.
+ */
+@font-face {
+  font-family: "General Sans:Regular";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://cdn.fontshare.com/wf/MFQT7HFGCR2L5ULQTW6YXYZXXHMPKLJ3/YWQ244D6TACUX5JBKATPOW5I5MGJ3G73/7YY3ZAAE3TRV2LANYOLXNHTPHLXVWTKH.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "General Sans:Medium";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://cdn.fontshare.com/wf/3RZHWSNONLLWJK3RLPEKUZOMM56GO4LJ/BPDRY7AHVI3MCDXXVXTQQ76H3UXA63S3/SB2OEB6IKZPRR6JT4GFJ2TFT6HBB6AZN.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "General Sans:Semibold";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("https://cdn.fontshare.com/wf/K46YRH762FH3QJ25IQM3VAXAKCHEXXW4/ISLWQPUZHZF33LRIOTBMFOJL57GBGQ4B/3ZLMEXZEQPLTEPMHTQDAUXP5ZZXCZAEN.woff2") format("woff2");
+}
