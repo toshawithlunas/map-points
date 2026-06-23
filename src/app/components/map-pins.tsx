@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import svgPaths from "../../imports/MapPins/svg-1437l3d6ft";
 import imgImage12 from "../../imports/MapPins/755539a6754f0706c847973b637b3b7caf76c344.png";
@@ -985,6 +985,21 @@ function Sidebar({
       else next.add(c);
       return next;
     });
+
+  // When a pin gets selected (e.g. clicked on the map), open its category group…
+  const selectedCardRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (selectedId == null) return;
+    const pin = PINS.find((p) => p.id === selectedId);
+    if (!pin) return;
+    setExpanded((prev) => (prev.has(pin.category) ? prev : new Set(prev).add(pin.category)));
+  }, [selectedId]);
+
+  // …then scroll its card into view once the group is expanded and the card mounts.
+  useEffect(() => {
+    selectedCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedId, expanded]);
+
   return (
     <div className="flex flex-col gap-[24px] w-full lg:w-[439px] shrink-0 lg:overflow-y-auto px-[24px] lg:pr-[24px] lg:pl-0 pb-[24px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-name="Surrounding">
       <div className="flex items-center justify-between w-full pt-[24px]">
@@ -1019,6 +1034,7 @@ function Sidebar({
                     {sg.places.map((place) => (
                       <PlaceCard
                         key={place.id}
+                        ref={place.id === selectedId ? selectedCardRef : null}
                         name={place.name}
                         selected={place.id === selectedId}
                         onClick={() => onSelectPin(place.id)}

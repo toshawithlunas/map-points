@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 
 /* ---- Card info icons (Figma 3796:10479) — white stroke @ 0.8 opacity ---- */
 function IconDistance() {
@@ -47,17 +47,13 @@ function InfoCell({ icon, text }: { icon: ReactNode; text: string }) {
 
 // Place card (Figma 3796:10479): name + distance / walk / drive (placeholder values).
 // Clicking selects the matching pin on the map and flies to it.
-export default function PlaceCard({
-  name,
-  selected,
-  onClick,
-}: {
-  name: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
+const PlaceCard = forwardRef<
+  HTMLButtonElement,
+  { name: string; selected: boolean; onClick: () => void }
+>(function PlaceCard({ name, selected, onClick }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       className={`content-stretch flex flex-col gap-[12px] items-start w-full text-left px-[20px] py-[12px] relative rounded-[16px] border border-solid cursor-pointer transition-colors ${
@@ -75,4 +71,6 @@ export default function PlaceCard({
       </div>
     </button>
   );
-}
+});
+
+export default PlaceCard;
