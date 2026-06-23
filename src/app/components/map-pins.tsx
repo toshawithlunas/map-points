@@ -1,8 +1,11 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import svgPaths from "../../imports/MapPins/svg-1437l3d6ft";
 import imgImage12 from "../../imports/MapPins/755539a6754f0706c847973b637b3b7caf76c344.png";
 import MapView from "./map-view";
-import { PINS, CATEGORY_COLOR, type Category } from "./map-pins-data";
+import StreetView from "./street-view";
+import PlaceCard from "./place-card";
+import { PINS, CATEGORY_COLOR, SUBGROUPS_BY_CATEGORY, type Category } from "./map-pins-data";
 
 // Every category, derived from the colour map (the single source for the 6 keys).
 // A full `visible` set ≡ "All"; an empty set ≡ nothing shown.
@@ -620,18 +623,25 @@ function MapPanel({
   visible,
   onToggleAll,
   onToggleChip,
+  selectedId,
+  setSelectedId,
+  focusNonce,
 }: {
   visible: Set<Category>;
   onToggleAll: () => void;
   onToggleChip: (c: Category) => void;
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
+  focusNonce: number;
 }) {
   const visiblePins = PINS.filter((p) => visible.has(p.category));
   return (
     <div className="relative flex-1 min-w-0 h-[55vh] lg:h-auto overflow-clip rounded-[24px]" data-name="interactive">
-      <MapView pins={visiblePins} />
+      <MapView pins={visiblePins} selectedId={selectedId} setSelectedId={setSelectedId} focusNonce={focusNonce} />
       <div aria-hidden className="absolute border border-[rgba(255,255,255,0.2)] border-solid inset-0 rounded-[24px] pointer-events-none" />
       <CategoryChips visible={visible} onToggleAll={onToggleAll} onToggleChip={onToggleChip} />
       <ActionButtons />
+      <StreetView />
       <DistanceFloating />
     </div>
   );
@@ -829,10 +839,10 @@ function GraduationCap2() {
   );
 }
 
-function CounterSm() {
+function CounterSm({ count }: { count: number }) {
   return (
     <div className="bg-[rgba(255,255,255,0.2)] content-stretch flex h-[24px] items-center justify-center px-[8px] relative rounded-[100px] shrink-0" data-name="Counter">
-      <p className="[word-break:break-word] font-['General_Sans:Regular',sans-serif] leading-[24px] not-italic relative shrink-0 text-[16px] text-[rgba(255,255,255,0.8)] whitespace-nowrap">10</p>
+      <p className="[word-break:break-word] font-['General_Sans:Regular',sans-serif] leading-[24px] not-italic relative shrink-0 text-[16px] text-[rgba(255,255,255,0.8)] whitespace-nowrap">{count}</p>
     </div>
   );
 }
@@ -859,29 +869,43 @@ function Toggle({ active, onClick }: { active: boolean; onClick: () => void }) {
 function AttractionGroup({
   icon,
   label,
+  count,
   active,
+  expanded,
   onToggle,
+  onToggleExpand,
+  children,
 }: {
   icon: ReactNode;
   label: string;
+  count: number;
   active: boolean;
+  expanded: boolean;
   onToggle: () => void;
+  onToggleExpand: () => void;
+  children?: ReactNode;
 }) {
   return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Attraction-Group">
+    <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full" data-name="Attraction-Group">
       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-name="Header">
-        <div className="content-stretch flex flex-[1_0_0] gap-[8px] items-center min-w-px relative" data-name="Title-Group">
-          <div className="content-stretch flex items-center justify-center relative rounded-[999px] shrink-0 size-[28px]" data-name="Desktop/Button/Ghost/Small">
-            <div className="h-[20px] relative shrink-0 w-[16px]" data-name="Size=20, Opened=False">
-              <Group />
-            </div>
-          </div>
+        <button type="button" onClick={onToggleExpand} className="content-stretch flex flex-[1_0_0] gap-[8px] items-center min-w-px relative cursor-pointer" data-name="Title-Group">
+          <ChevronDown
+            size={20}
+            strokeWidth={2}
+            aria-hidden
+            className={`shrink-0 text-white transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          />
           {icon}
           <p className="[word-break:break-word] font-['General_Sans:Semibold',sans-serif] leading-[24px] not-italic relative shrink-0 text-[16px] text-white whitespace-nowrap">{label}</p>
-          <CounterSm />
-        </div>
+          <CounterSm count={count} />
+        </button>
         <Toggle active={active} onClick={onToggle} />
       </div>
+      {expanded && children && (
+        <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full" data-name="Group-Content">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -943,14 +967,26 @@ function Sidebar({
   onToggleCategory,
   allHidden,
   onToggleAllVisibility,
+  selectedId,
+  onSelectPin,
 }: {
   visible: Set<Category>;
   onToggleCategory: (c: Category) => void;
   allHidden: boolean;
   onToggleAllVisibility: () => void;
+  selectedId: string | null;
+  onSelectPin: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState<Set<Category>>(new Set());
+  const toggleExpand = (c: Category) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(c)) next.delete(c);
+      else next.add(c);
+      return next;
+    });
   return (
-    <div className="flex flex-col gap-[24px] w-full lg:w-[439px] shrink-0 lg:overflow-y-auto px-[24px] lg:pr-[24px] lg:pl-0 pb-[24px]" data-name="Surrounding">
+    <div className="flex flex-col gap-[24px] w-full lg:w-[439px] shrink-0 lg:overflow-y-auto px-[24px] lg:pr-[24px] lg:pl-0 pb-[24px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-name="Surrounding">
       <div className="flex items-center justify-between w-full pt-[24px]">
         <div className="content-stretch flex items-center relative shrink-0" data-name="title">
           <p className="[word-break:break-word] font-['General_Sans:Semibold',sans-serif] leading-[28px] not-italic relative shrink-0 text-[20px] text-white whitespace-nowrap">Surroundings</p>
@@ -962,15 +998,38 @@ function Sidebar({
         </button>
       </div>
       <div className="flex flex-col gap-[24px] items-start w-full" data-name="Surrounding-Content">
-        {SIDEBAR_GROUPS.map((g) => (
-          <AttractionGroup
-            key={g.category}
-            icon={<g.Icon />}
-            label={g.label}
-            active={visible.has(g.category)}
-            onToggle={() => onToggleCategory(g.category)}
-          />
-        ))}
+        {SIDEBAR_GROUPS.map((g) => {
+          const subgroups = SUBGROUPS_BY_CATEGORY[g.category] ?? [];
+          const count = subgroups.reduce((n, sg) => n + sg.places.length, 0);
+          return (
+            <AttractionGroup
+              key={g.category}
+              icon={<g.Icon />}
+              label={g.label}
+              count={count}
+              active={visible.has(g.category)}
+              expanded={expanded.has(g.category)}
+              onToggle={() => onToggleCategory(g.category)}
+              onToggleExpand={() => toggleExpand(g.category)}
+            >
+              {subgroups.map((sg) => (
+                <div key={sg.name} className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-name="SubGroup">
+                  <p className="[word-break:break-word] font-['General_Sans:Medium',sans-serif] leading-[20px] not-italic relative shrink-0 text-[16px] text-white whitespace-nowrap">{sg.name}</p>
+                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-name="Cards">
+                    {sg.places.map((place) => (
+                      <PlaceCard
+                        key={place.id}
+                        name={place.name}
+                        selected={place.id === selectedId}
+                        onClick={() => onSelectPin(place.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </AttractionGroup>
+          );
+        })}
       </div>
     </div>
   );
@@ -981,6 +1040,20 @@ export default function MapPins() {
   // Single source of truth: the set of visible categories. Full set ≡ "All";
   // empty set ≡ nothing shown. Chips and sidebar both read/write this.
   const [visible, setVisible] = useState<Set<Category>>(() => new Set(ALL_CATEGORIES));
+
+  // Selected pin lifted here so a sidebar card can drive map selection. focusNonce
+  // bumps on a card click to trigger a fly-to in MapView (plain pin clicks don't).
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusNonce, setFocusNonce] = useState(0);
+
+  // Card click: make sure the pin's category is shown, select it, and fly to it.
+  const focusPin = (id: string) => {
+    const pin = PINS.find((p) => p.id === id);
+    if (!pin) return;
+    setVisible((prev) => (prev.has(pin.category) ? prev : new Set(prev).add(pin.category)));
+    setSelectedId(id);
+    setFocusNonce((n) => n + 1);
+  };
 
   // "All" chip: full → empty (hide everything); otherwise → full (show all).
   const onToggleAll = () =>
@@ -1016,9 +1089,23 @@ export default function MapPins() {
       </div>
       <div className="relative z-10 flex flex-col h-full">
         <HeaderBar />
-        <div className="flex flex-col lg:flex-row gap-[8px] flex-1 min-h-0 px-[8px] pb-[8px] overflow-y-auto lg:overflow-hidden">
-          <MapPanel visible={visible} onToggleAll={onToggleAll} onToggleChip={onToggleChip} />
-          <Sidebar visible={visible} onToggleCategory={onToggleCategory} allHidden={visible.size === 0} onToggleAllVisibility={onToggleAllVisibility} />
+        <div className="flex flex-col lg:flex-row gap-[8px] lg:gap-[24px] flex-1 min-h-0 px-[8px] pb-[8px] overflow-y-auto lg:overflow-hidden">
+          <MapPanel
+            visible={visible}
+            onToggleAll={onToggleAll}
+            onToggleChip={onToggleChip}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            focusNonce={focusNonce}
+          />
+          <Sidebar
+            visible={visible}
+            onToggleCategory={onToggleCategory}
+            allHidden={visible.size === 0}
+            onToggleAllVisibility={onToggleAllVisibility}
+            selectedId={selectedId}
+            onSelectPin={focusPin}
+          />
         </div>
       </div>
     </div>

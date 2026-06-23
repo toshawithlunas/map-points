@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import MapGL, { Marker, type MapRef } from "react-map-gl/mapbox";
 import imgImage8 from "../../imports/MapPins/ddcdecdf03e734d614f800d710b1bf3e900fbd5c.png";
-import { CATEGORY_COLOR, type Category, type PinDatum } from "./map-pins-data";
+import { PINS, CATEGORY_COLOR, type Category, type PinDatum } from "./map-pins-data";
 import {
   Attraction,
   Plant1,
@@ -246,12 +246,21 @@ function MarkerBadge({
   );
 }
 
-export default function MapView({ pins }: { pins: PinDatum[] }) {
+export default function MapView({
+  pins,
+  selectedId,
+  setSelectedId,
+  focusNonce,
+}: {
+  pins: PinDatum[];
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
+  focusNonce: number;
+}) {
   const mapRef = useRef<MapRef>(null);
   const [compactIds, setCompactIds] = useState<Set<string>>(new Set());
   const [labelHiddenIds, setLabelHiddenIds] = useState<Set<string>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   // Pins stay hidden until the map has loaded and the first declutter ran.
   const [ready, setReady] = useState(false);
 
@@ -329,6 +338,16 @@ export default function MapView({ pins }: { pins: PinDatum[] }) {
     }
   }, [pins, selectedId]);
 
+  // Fly to a pin when a sidebar card requests focus (focusNonce bumps). Keyed on
+  // focusNonce only — direct map-pin clicks change selectedId but not focusNonce,
+  // so the map doesn't jump on every selection. (deps intentionally minimal)
+  useEffect(() => {
+    if (focusNonce === 0 || selectedId == null) return;
+    const pin = PINS.find((p) => p.id === selectedId);
+    if (pin) mapRef.current?.easeTo({ center: [pin.lng, pin.lat], duration: 600 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce]);
+
   // No token yet → graceful fallback: keep the static image so nothing crashes.
   if (!TOKEN) {
     return (
@@ -368,7 +387,7 @@ export default function MapView({ pins }: { pins: PinDatum[] }) {
               selected={selectedId === p.id}
               dimmed={selectedId != null}
               ready={ready}
-              onSelect={() => setSelectedId((cur) => (cur === p.id ? null : p.id))}
+              onSelect={() => setSelectedId(selectedId === p.id ? null : p.id)}
               dials={dials}
             />
           </Marker>
